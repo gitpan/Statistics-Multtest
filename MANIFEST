@@ -1,0 +1,11 @@
+MANIFEST
+Makefile.PL
+lib/Statistics/Multtest.pm
+t/01bonferroni.t
+t/02holm.t
+t/03hommel.t
+t/04hochberg.t
+t/05BH.t
+t/06BY.t
+t/07qvalue.t
+META.yml                                 Module meta-data (added by MakeMaker)
