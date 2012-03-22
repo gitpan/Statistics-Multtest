@@ -1,22 +1,27 @@
 package Statistics::Multtest;
 
 use List::Vectorize;
+use Carp;
 use strict;
 
 require Exporter;
 our @ISA = qw(Exporter);
-our @EXPORT_OK = qw(bonferroni holm hommel hochberg BH BY qvalue);
-our %EXPORT_TAGS = (all => [qw(bonferroni holm hommel hochberg BH BY qvalue)]);
+our @EXPORT_OK = qw(bonferroni holm hommel hochberg BH BY);
+our %EXPORT_TAGS = (all => [qw(bonferroni holm hommel hochberg BH BY)]);
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 1;
 
 sub initial {
 	my $p = shift;
 	
+	if(!defined(ref($p))) {
+		croak "ERROR: P-values should be array ref or hash ref.\n";
+	}
+	
 	unless(ref($p) eq "ARRAY" or ref($p) eq "HASH") {
-		die "ERROR: P-values should be array ref or hash ref.\n";
+		croak "ERROR: P-values should be array ref or hash ref.\n";
 	}
 	
 	my $name = [];
@@ -26,7 +31,7 @@ sub initial {
 	}
 	
 	if(max($p) > 1 or min($p) < 0) {
-		die "ERROR: P-values should between 0 and 1.\n";
+		croak "ERROR: P-values should between 0 and 1.\n";
 	}
 	
 	return ($name, $p);
@@ -36,7 +41,7 @@ sub initial {
 sub get_result {
 	my ($adjp, $name) = @_;
 	
-	if(len($name) == 0) {
+	if(is_empty($name)) {
 		return $adjp;
 	}
 	else {
@@ -94,80 +99,6 @@ sub BY {
     ($name, $p) = initial($p);
     my $adjp = _BY($p);
 	return get_result($adjp, $name);
-}
-
-sub qvalue {
-    my $p = shift;
-    my $name;
-    ($name, $p) = initial($p);
-    my $adjp = _qvalue($p);
-	return get_result($adjp, $name);
-}
-
-sub _qvalue {
-	my $p = shift;
-	my $o = order($p);
-	$p = subset($p, $o);
-	my $ro = order($o);
-	
-	my $m = scalar(@$p);
-	my @lambda;
-	for(my $i = 0; $i < 19; $i++) {
-		$lambda[$i] = $i*0.05;
-	}
-	
-	#
-	my $pi0;
-	if(length(@lambda) == 1) {
-		if($lambda[0] >0 and $lambda[0] < 1) {
-			$pi0 = scalar(@{&subset($p, sub{$_[0] >= $lambda[0]})})/$m/(1-$lambda[0]);
-			$pi0 = min([$pi0, 1]);
-		}
-	}
-	else {
-		# pi0[lamda]
-		my @pi0;
-		for(my $i = 0; $i < scalar(@lambda); $i ++) {
-			$pi0[$i] = scalar(@{&subset($p, sub{$_[0] >= $lambda[0]})})/$m/(1-$lambda[$i]);
-		}
-		
-		# bootstrap
-		my $minpi0 = min(\@pi0);
-		my @mse;
-		my @pi0_boot;
-		
-		for(my $i = 0; $i < 100; $i ++) {
-			my @p_boot = sample($p, $m, "replace" => 1);
-			my @pi0_boot;
-			for(my $j = 0; $j < scalar(@lambda); $j ++) {
-				$pi0_boot[$j] = scalar(@{subset(\@p_boot, sub{$_[0] > $lambda[$j]})})/$m/(1-$lambda[$j]);
-				$mse[$j] += ($pi0_boot[$j] - $minpi0)**2;
-			}
-		}
-		
-		my $minmse = min(\@mse);
-		my @tmp_pi0;
-		for(my $j = 0; $j < scalar(@lambda); $j ++) {
-			if(abs($mse[$j]-$minmse) < 0.000001) {
-				push(@tmp_pi0, $pi0[$j]);
-			}
-		}
-		$pi0 = min(\@tmp_pi0);
-		$pi0 = min([$pi0, 1]);
-	}
-	print "pi0 = $pi0\n";
-	my $q = [];
-	if($pi0 <= 0) {
-		return $q;
-	}
-	
-	$q->[$#$p] = min([$pi0*$p->[$#$p], 1]);     # q(p[m]) = pi0 * p[m]
-	for(my $i = $#$p - 1; $i >= 0; $i --) {
-		$q->[$i] = min([$pi0*$m*$p->[$i]/($i+1), $q->[$i+1]]);
-		$q->[$i] = min([$q->[$i], 1]);
-	}
-	
-	return subset($q, $ro);
 }
 
 # R code: pmin(1, n * p)
@@ -334,7 +265,8 @@ Statistics::Multtest - Control false discovery rate in multiple test problem
 
 =head1 SYNOPSIS
 
-  use Statistics::Multtest qw(bonferroni holm hommel hochberg BH BY qvalue);
+  use Statistics::Multtest qw(bonferroni holm hommel hochberg BH BY);
+  use Statistics::Multtest qw(:all);
   use strict;
   
   my $p;
@@ -352,7 +284,7 @@ Statistics::Multtest - Control false discovery rate in multiple test problem
         "e" => 0.16,
         "f" => 0.51 };
   # $res is also a hash reference which is the same as $p
-  $res = qvalue($p);
+  $res = holm($p);
   foreach (sort {$res->{a} <=> $res->{$b}} keys %$res) {
       print "$_ => $res->{$_}\n";
   }
@@ -360,17 +292,17 @@ Statistics::Multtest - Control false discovery rate in multiple test problem
 =head1 DESCRIPTION
 
 For statistical test, p-value is the probability of false positives. While there
-are many hypothesis testing simultaneously, the probability of getting at least one
+are many hypothesis for testing simultaneously, the probability of getting at least one
 false positive would be large. Therefore the origin p-values should be adjusted to decrease
 the false discovery rate.
 
-Seven procedures to controlling false positive rates is provided. 
-The name of the methods are derived from C<p.adjust> in 
-C<stat> package and C<qvalue> in C<qvalue> package in R.
-Code is translated directly from R to Perl using L<List::Vectorize> module.
+Six procedures to controlling false positive rates is provided. 
+The names of the methods are derived from C<p.adjust> in 
+C<stat> package in R. Code is translated directly from R to Perl using L<List::Vectorize> module.
 
-All seven subroutine receive one argument which can either be an array reference
-or a hash reference.
+All six subroutines receive one argument which can either be an array reference
+or a hash reference, and return the adjusted p-values in corresponding data structure. The order
+of items in the array does not change after the adjustment.
 
 =head2 Subroutines
 
@@ -410,12 +342,6 @@ Use Benjamini and Yekutieli.
 
 Benjamini, Y., and Yekutieli, D. (2001). The control of the false discovery rate in multiple testing under dependency. Annals of Statistics 29, 1165¨C1188. 
 
-=item C<qvalue($pvalue)>
-
-Storey and Tibshirani.
-
-Storey JD and Tibshirani R. (2003) Statistical significance for genome-wide experiments. Proceedings of the National Academy of Sciences, 100: 9440-9445. 
-
 =back
 
 =head1 AUTHOR
@@ -429,5 +355,9 @@ Copyright 2012 by Zuguang Gu
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.12.1 or,
 at your option, any later version of Perl 5 you may have available.
+
+=head1 SEE ALSO
+
+List::Vectorize
 
 =cut

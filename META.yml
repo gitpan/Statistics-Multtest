@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Statistics-Multtest
-version:            0.10
+version:            0.11
 abstract:           Control false discovery rate in multiple test problem
 author:
     - Zuguang Gu <jokergoo@gmail.com>
@@ -11,13 +11,13 @@ configure_requires:
 build_requires:
     ExtUtils::MakeMaker:  0
 requires:
-    List::Vectorize:  
-    Test::More:       
+    List::Vectorize:  1.00
+    Test::More:       0
 no_index:
     directory:
         - t
         - inc
-generated_by:       ExtUtils::MakeMaker version 6.55_02
+generated_by:       ExtUtils::MakeMaker version 6.56
 meta-spec:
     url:      http://module-build.sourceforge.net/META-spec-v1.4.html
     version:  1.4
