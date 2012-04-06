@@ -1,4 +1,7 @@
 
 0.11  remove qvalue
       add some tests
-	  
+
+0.12  qvalue has been corrected and tested, and is back to the module
+      add some tests
+	  pod was revised

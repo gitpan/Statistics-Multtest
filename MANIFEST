@@ -8,6 +8,7 @@ t/00-export-all.t
 t/00-export-all2.t
 t/00-pod.t
 t/00-pod-coverage.t
-t/model.t
-t/prototype.t
+t/1prototype.t
+t/2model.t
+t/3qvalue.t
 META.yml                                 Module meta-data (added by MakeMaker)
