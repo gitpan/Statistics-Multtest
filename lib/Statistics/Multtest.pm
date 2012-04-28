@@ -10,13 +10,13 @@ our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(bonferroni holm hommel hochberg BH BY qvalue);
 our %EXPORT_TAGS = (all => [qw(bonferroni holm hommel hochberg BH BY qvalue)]);
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 1;
 
 BEGIN {
     no strict 'refs';
-    for my $adjp qw(bonferroni holm hommel hochberg BH BY qvalue) {
+    for my $adjp (qw(bonferroni holm hommel hochberg BH BY qvalue)) {
         *{$adjp} = sub {
             my $p = shift;
             my $name;
